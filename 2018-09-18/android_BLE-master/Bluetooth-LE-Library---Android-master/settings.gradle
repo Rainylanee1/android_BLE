@@ -1,0 +1,2 @@
+include ':library', ':lib'
+include ':sample_app'
