@@ -10,8 +10,12 @@ import android.util.Log;
 import java.lang.reflect.Array;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Vector;
+import java.util.concurrent.CancellationException;
 
 /**
  * Created by Sky on 2016/10/7.
@@ -204,10 +208,12 @@ public class ContactinfoDao {
         cursor.close();
         return table_name_all;
     }
-    public String get_lasttime()
+    public String[] get_first_lasttime()
     {
-        SQLiteDatabase writableDatabase = mMydbHelper.getWritableDatabase();
-        String time_get="";
+
+        String time_get[]=new String[200];
+        String time_get1[]=new String[200];
+        String[] table_name_all = Arrays.copyOfRange(get_table_name_all(),3,get_table_name_all().length);
         /**
          * 参数1：查询的表
          * 参数2：查询的列
@@ -217,15 +223,20 @@ public class ContactinfoDao {
          * 参数6：having
          * 参数7：orderBy
          */
-        Cursor cursor= writableDatabase.query(mMydbHelper.get_table_time(),null,null,null,null,null,null);
-        if(cursor.moveToFirst())
+        for(int i=0;i<table_name_all.length;i++)
         {
-                cursor.moveToPosition(cursor.getCount()-1);
-                time_get=cursor.getString(1);
-
-        }
-        cursor.close();
-        writableDatabase.close();
+            SQLiteDatabase writableDatabase = mMydbHelper.getWritableDatabase();
+                Cursor cursor= writableDatabase.query(table_name_all[i],null,null,null,null,null,null);
+                cursor.moveToFirst();
+                while(cursor.getString(1).equals("0"))cursor.moveToNext();
+                time_get[i]=cursor.getString(1);
+                cursor.moveToLast();
+                time_get1[i]=cursor.getString(1);
+                cursor.close();
+                writableDatabase.close();
+                }
+                System.out.println("ARRAYS"+Arrays.toString(time_get));
+        System.out.println("ARRAYS1"+Arrays.toString(time_get1));
         return time_get;
 
 
@@ -249,18 +260,30 @@ public class ContactinfoDao {
             for(int i=0;i<strings.length;i++) {
                 mMydbHelper.set_table_time(strings[i]);
                 Cursor cursor = writableDatabase.query(strings[i], null, null, null, null, null, null);
+                if(cursor!=null)
                 cursor.moveToFirst();
-                while ((cursor.getString(1).equals("0"))) cursor.moveToNext();
+                //cursor.moveToPosition(0);
+            try {
+                while ((cursor.getString(1).equals("0"))) {
+                    cursor.moveToNext();
+//                    if(cursor.getString(1).equals("2018-09-26 19:46:40"))
+//                    Log.e("cursor.mmoves",cursor.getString(1) +"  " +cursor.getString(2)+"  "+cursor.getString(3));
+                }
+
                 time_change = cursor.getString(1).replace("-", "_").replace(":", "_").replace(" ", "_");
-                Log.e("timechange",time_change);
+                //Log.e("timechange", time_change);
                 cursor.moveToLast();
                 time_change = "time_start" + time_change + "time_end" + cursor.getString(1).replace("-", "_").replace(":", "_").replace(" ", "_");
                 cursor.close();
-                Log.e("timechange1",time_change);
-                if(!time_change.equals(strings[i])) {
-                    Log.e("timechange1",time_change);
+                //Log.e("timechange1", time_change);
+                if (!time_change.equals(strings[i])) {
+                    Log.e("timechange1", time_change);
                     rename_table_name(time_change);
                 }
+            }
+            catch (Exception e) {
+                         e.printStackTrace();
+             }
             }
             //time_change的格式yyyy-MM-dd HH:mm:ss;
         writableDatabase.close();
@@ -273,61 +296,34 @@ public class ContactinfoDao {
         Date dateTime1=null,dateTime2=null,dateTime3=null;
         //表名为（例）：time_start2018_09_19_19_50_40time_end2018_09_19_19_50_45
         //截去android_在metadata, sqlite_sequence, time_start.这三个默认的数据表;
-        System.out.print("substring1"+Arrays.toString(get_table_name_all()));
-        System.out.print("substring"+Arrays.toString(table_name_all));
+//        System.out.print("substring1"+Arrays.toString(get_table_name_all()));
+//        System.out.print("substring"+Arrays.toString(table_name_all));
         for(int i=0;i<table_name_all.length;i++)
         {
-//            String[] string_starttime_endtime= String_tablename_getnormaltime(table_name_all[i]);
-//            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//            try {
-//                 dateTime1 = dateFormat.parse(single_time);
-//            }catch (Exception e)
-//            {
-//                e.printStackTrace();
-//            }
-//            try {
-//                    dateTime2 = dateFormat.parse(string_starttime_endtime[0]);
-//            }catch (Exception e)
-//            {
-//                e.printStackTrace();
-//            }
-//            try {
-//                dateTime3 = dateFormat.parse(string_starttime_endtime[1]);
-//            }catch (Exception e)
-//            {
-//                e.printStackTrace();
-//            }
-//            int i1=dateTime2.compareTo(dateTime1);//-1
-//            int i2=dateTime3.compareTo(dateTime1);//1 //两个Date类型的变量可以通过compareTo方法来比较。此方法的描述是这样的：如果参数 Date 等于此 Date，则返回值 0；如果此 Date 在 Date 参数之前，则返回小于 0 的值；如果此 Date 在 Date 参数之后，则返回大于 0 的值。
-//            Log.e("???7",String.valueOf(i1));
-//            Log.e("???8",String.valueOf(i2));
-//            //a.compareto(b)   b>a---return -1；
-//            //                 b<a---return 1;
             if(get_flag_timeString_compareto(String_tablename_getnormaltime(table_name_all[i]),single_time))
             {
-                Log.e("gogogo","gogog");
                 SQLiteDatabase writableDatabase = mMydbHelper.getWritableDatabase();
-                Cursor cursor= writableDatabase.query(mMydbHelper.get_table_time(),null,null,null,null,null,null);
+                Cursor cursor= writableDatabase.query(table_name_all[i],null,null,null,null,null,null);
                 cursor.moveToFirst();
-                            for(int ii=1;i<cursor.getCount();i++)
-                            {
-                                cursor.moveToPosition(i);
-                                cursor.getString(1);
-                                if(cursor.getString(1).equals(single_time))
-                                 break;
-                            }
-//                while (!(cursor.getString(1).equals(single_time)))
-//                    cursor.moveToNext();
-                Log.e("truetimeis",cursor.getString(1));
-                string_return[0]=cursor.getString(2);
-                string_return[1]=cursor.getString(3);
-                Log.e("stringreturn",string_return[0]);
-                //                cursor.getString(2);//temper;
-//                cursor.getString(3);//pressure;
+                for(int k=1;k<cursor.getCount();k++)
+                {
+                    cursor.moveToPosition(k);
+                    if(cursor.getString(1).equals(single_time)) {
+                        string_return[0]="time is "+cursor.getString(1)+"temper is "+cursor.getString(2)+"pressure is "+cursor.getString(3);
+                        cursor.moveToNext();
+                        if(cursor.getString(1).equals(single_time))
+                        {
+                            Log.e("erreroero","123");
+                            string_return[1]="time is "+cursor.getString(1)+"temper is "+cursor.getString(2)+"pressure is "+cursor.getString(3);
+                        }else string_return[1]="null";
+                        break; //已知500ms读一次数据，所以每一秒有可能对应1或两个数据，这里是读取后返回字符串数组;
+                    }
+                }
                 cursor.close();
                 writableDatabase.close();
             }
         }
+//        Log.e("string_return",string_return[0]+"  "+string_return[1]);
         return string_return;
     }
     private  Boolean get_flag_timeString_compareto(String[] string_starttime_endtime,String single_time )
@@ -337,29 +333,19 @@ public class ContactinfoDao {
         DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         try {
             dateTime1 = dateFormat.parse(single_time);
-        }catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-        try {
             dateTime2 = dateFormat.parse(string_starttime_endtime[0]);
-        }catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-        try {
             dateTime3 = dateFormat.parse(string_starttime_endtime[1]);
-        }catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-        try {
             if(dateTime2.compareTo(dateTime1)==-1)
                 if(dateTime3.compareTo(dateTime1)==1)
                 return true;
+            if(dateTime2.compareTo(dateTime1)==0)
+                if(dateTime3.compareTo(dateTime1)==1)
+                    return true;
+            if(dateTime2.compareTo(dateTime1)==-1)
+                if(dateTime3.compareTo(dateTime1)==0)
+                    return true;
             else return false;
-        }catch (Exception e)
-        {
+        }catch (Exception e) {
             e.printStackTrace();
         }
 //        int i1=dateTime2.compareTo(dateTime1);//-1
@@ -371,17 +357,17 @@ public class ContactinfoDao {
     private String[] String_tablename_getnormaltime(String tablename) //分离出一个表的开始时间和终止时间
     {
         String[] string_starttime_endtime= new String[2];
-        //if(tablename.length()>55) {
-            string_starttime_endtime[0] = tablename.substring(10, 29);
-            string_starttime_endtime[1] = tablename.substring(37, 56);
-        //}
+        if(tablename.length()>55) {
+            string_starttime_endtime[0] = tablename.substring(10,29);
+            string_starttime_endtime[1] = tablename.substring(37,56);
+        }// 常常tablename长度报错为29，正常应为56；
+//        else return  null;
         string_starttime_endtime[0]=string_starttime_endtime[0].replace("_","-");
         StringBuffer buffer = new StringBuffer(string_starttime_endtime[0]);
         buffer.replace(10,11," ")
                 .replace(13,14,":")
                 .replace(16,17,":");  //将time_start2018_09_19_19_50_40time_end2018_09_19_19_50_45 分离成2018-09-20 21:33:53 和2018-09-19 19:50:45
         string_starttime_endtime[0]=buffer.toString();
-
         string_starttime_endtime[1]=string_starttime_endtime[1].replace("_","-");
         buffer = new StringBuffer(string_starttime_endtime[1]);
         buffer.replace(10,11," ")
@@ -389,6 +375,48 @@ public class ContactinfoDao {
                 .replace(16,17,":");  //同上
         string_starttime_endtime[1]=buffer.toString();
         return string_starttime_endtime;
+    }
+    public String[] scan_mutiple_data(String date_start,String date_end)
+    {
+        Calendar calendar=Calendar.getInstance();
+        Vector<String> vector_scan_time=new Vector<String>(100,1);
+        Vector<String> vector_scan_data=new Vector<String>(100,1);
+        DateFormat dateFormat1=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        try {
+            Date beginDate = dateFormat1.parse(date_start);
+            Date endDate = dateFormat1.parse(date_end);
+            Date date=beginDate;
+            while(!date.equals(endDate))
+            {
+                vector_scan_time.add(dateFormat1.format(date)); //添加("yyyy-MM-dd HH:mm:ss")形式的字符串到向量中;
+                calendar.setTime(date);
+                calendar.add(Calendar.SECOND,1);
+                date = calendar.getTime();
+            }
+            vector_scan_time.add(dateFormat1.format(endDate));
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        for(int i=0;i<vector_scan_time.size();i++) //遍历时间向量，求每个时间的数据
+            {
+//                System.out.println("qwer"+vector_scan_time.get(i)); //能遍历start_date到end_date减一秒的时间
+//                System.out.println("asdf"+scan_singletime_data(vector_scan_time.get(i))[0]);
+//                System.out.println("zxcv"+scan_singletime_data(vector_scan_time.get(i))[1]);
+                vector_scan_data.add(scan_singletime_data(vector_scan_time.get(i))[0]);
+                vector_scan_data.add(scan_singletime_data(vector_scan_time.get(i))[1]);
+            }
+                Object[] objects=null;
+                objects=vector_scan_data.toArray();
+                String[] string_return=new String[objects.length];
+                for(int j=0;j<objects.length;j++)
+                {
+                    string_return[j]=objects[j].toString();
+                }
+                //System.out.println("dateis3 "+vector_scan_data.get(i)); //能遍历start_date到end_date减一秒的时间
+
+            //Log.e("string_mutiple_strings",Arrays.toString(string_return));
+        return  string_return;
     }
     public String get_tablename()
     {

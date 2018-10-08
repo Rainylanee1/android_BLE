@@ -17,6 +17,7 @@
 package uk.co.alt236.btlescan.ui.control;
 
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
@@ -41,7 +42,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.widget.ArrayAdapter;
+//import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ExpandableListView;
 import android.widget.FrameLayout;
@@ -62,6 +63,7 @@ import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -99,7 +101,6 @@ public class DeviceControlActivity extends AppCompatActivity {
     private BluetoothLeService mBluetoothLeService;
     private  Button button;
     private Button button_chaxun;
-    private TimePickerView pvTime;
     private SuitLines suitLines_temper,suitLines_pressure;
     //GattDataAdapterFactory gattDataAdapterFactory;
     private GattDataAdapterFactory.GattDataAdapter adapter_1;
@@ -259,51 +260,6 @@ public class DeviceControlActivity extends AppCompatActivity {
         mDatatemper.setText(R.string.no_data);
         mDatapressure.setText(R.string.no_data);
     }
-    private void initTimePicker() {//Dialog 模式下，在底部弹出
-
-        pvTime = new TimePickerBuilder(this, new OnTimeSelectListener() {
-            @Override
-            public void onTimeSelect(Date date, View v) {
-                //Toast.makeText(DeviceControlActivity.this, getTime(date), Toast.LENGTH_SHORT).show();
-               // Log.i("pvTime", "onTimeSelect");
-               // Log.e("datadata",getTime(date));
-               // showNormalDialog();
-                String_single_data=mContactinfoDao.scan_singletime_data(getTime(date));
-                Toast.makeText(DeviceControlActivity.this,"temper is:"+String_single_data[0]+" pressure is"+String_single_data[1], Toast.LENGTH_SHORT).show();
-
-            }
-        })
-                .setTimeSelectChangeListener(new OnTimeSelectChangeListener() {
-                    @Override
-                    public void onTimeSelectChanged(Date date) {
-                        Log.i("pvTime", "onTimeSelectChanged");
-
-                    }
-                })
-                .setType(new boolean[]{true, true, true, true, true, true})
-                .isDialog(true) //默认设置false ，内部实现将DecorView 作为它的父控件。
-                .setTitleText("选择要查询的时间")
-                .build();
-
-        Dialog mDialog = pvTime.getDialog();
-        if (mDialog != null) {
-
-            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Gravity.BOTTOM);
-
-            params.leftMargin = 0;
-            params.rightMargin = 0;
-            pvTime.getDialogContainerLayout().setLayoutParams(params);
-
-            Window dialogWindow = mDialog.getWindow();
-            if (dialogWindow != null) {
-                dialogWindow.setWindowAnimations(com.bigkoo.pickerview.R.style.picker_view_slide_anim);//修改动画样式
-                dialogWindow.setGravity(Gravity.BOTTOM);//改成Bottom,底部显示
-            }
-        }
-    }
     private String getTime(Date date) {//可根据需要自行截取数据显示
         Log.d("getTime()", "choice date millis: " + date.getTime());
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -349,8 +305,9 @@ public class DeviceControlActivity extends AppCompatActivity {
         mGattServicesList.setAdapter(adapter);
         invalidateOptionsMenu();
     }
-    private void showNormalDialog()
+    private void showNormalDialog_selet_scankind(final String[] table_name_all)
     {
+        //选择单次时间搜索或者范围时间搜索（多次数据）
         /*
  @setIcon 设置对话框图标
          *
@@ -373,7 +330,154 @@ public class DeviceControlActivity extends AppCompatActivity {
             public void onClick(DialogInterface
                 dialog, int which)
             {
+                mContactinfoDao.verify_tablename();
+                Log.e("tableisExist",mContactinfoDao.get_tablename());
+                for (int a = 0; a < table_name_all.length; a++) {
+                    if(table_name_all[a].contains("time_start")) {
+                        table_name_all[a] = table_name_all[a].substring(10).replaceAll("time_end", "至").replace("_",":");
+                    }
+                    //time_start2018_09_19_19_50_40time_end2018_09_19_19_50_45转换为2018:09:19:19:50:40至2018:09:19:19:50:45
+                }                                                                                       //至为19
+                AlertDialog.Builder builder=new AlertDialog.Builder(DeviceControlActivity.this);
+                builder.setTitle("选择时间");
+                builder.setItems(table_name_all, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface,final int i) {
+                        dialogInterface.dismiss();
+                        Toast.makeText(DeviceControlActivity.this, table_name_all[i],
+                                Toast.LENGTH_SHORT).show();
+
+                        final Calendar calendar=Calendar.getInstance();
+                        calendar.set(Integer.parseInt(table_name_all[i].substring(0,4)),
+                                Integer.parseInt(table_name_all[i].substring(5,7))-1,
+                                Integer.parseInt(table_name_all[i].substring(8,10)),
+                                Integer.parseInt(table_name_all[i].substring(11,13)),
+                                Integer.parseInt(table_name_all[i].substring(14,16)),
+                                Integer.parseInt(table_name_all[i].substring(17,19)));
+                        final Date date=calendar.getTime();
+                        SimpleDateFormat df=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        String time=df.format(date);//得到点击区间的起始时间
+                        System.out.println("abcdis"+time);
+
+                        final Calendar calendar1=Calendar.getInstance();
+                        calendar1.set(Integer.parseInt(table_name_all[i].substring(20,24)),
+                                Integer.parseInt(table_name_all[i].substring(25,27))-1,
+                                Integer.parseInt(table_name_all[i].substring(28,30)),
+                                Integer.parseInt(table_name_all[i].substring(31,33)),
+                                Integer.parseInt(table_name_all[i].substring(34,36)),
+                                Integer.parseInt(table_name_all[i].substring(37,39)));
+                        Date date1=calendar1.getTime();
+                        SimpleDateFormat df1=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        String time1=df1.format(date1);//得到点击区间的终止时间
+
+                        final TimePickerView pvtime1; //单次或起始时间选择
+                        pvtime1 = new TimePickerBuilder(DeviceControlActivity.this, new OnTimeSelectListener() {
+                            @Override
+                            public void onTimeSelect(final Date date_start, View v) {
+                                TimePickerView pvTime_end = new TimePickerBuilder(DeviceControlActivity.this, new OnTimeSelectListener() {
+                                    @Override //终止时间选择
+                                    public void onTimeSelect(Date date_end, View v) {
+                                        String[] String_mutiple_data=null;
+                                        ProgressDialog progressDialog_mutiple = ProgressDialog.show(DeviceControlActivity.this,"提示","正在搜索中",false);
+                                        String_mutiple_data=mContactinfoDao.scan_mutiple_data(getTime(date_start),getTime(date_end));
+                                        progressDialog_mutiple.dismiss();
+
+                                        AlertDialog.Builder builder_data_mutiple=new AlertDialog.Builder(DeviceControlActivity.this);
+                                        builder_data_mutiple.setTitle("选择时间");
+                                        builder_data_mutiple.setItems(String_mutiple_data, new DialogInterface.OnClickListener()
+                                        {
+                                            @Override
+                                            public void onClick(DialogInterface dialogInterface, int i)
+                                            {
+
+                                            }
+                                        });
+                                        builder_data_mutiple.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                dialog.dismiss();
+                                                Toast.makeText(DeviceControlActivity.this, "确定", Toast.LENGTH_SHORT)
+                                                        .show();
+                                            }
+                                        });
+                                        builder_data_mutiple.create().show();
+                                    }
+                                })
+                                        .setType(new boolean[]{true, true, true, true, true, true})
+                                        .setTitleText("选择终止时间 "+table_name_all[i])
+                                        .setRangDate(calendar,calendar1)
+                                        .build();
+                                Dialog mDialog = pvTime_end.getDialog();
+                                if (mDialog != null) {
+
+                                    FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                                            Gravity.CENTER);
+
+                                    params.leftMargin = 0;
+                                    params.rightMargin = 0;
+                                    pvTime_end.getDialogContainerLayout().setLayoutParams(params);
+
+                                    Window dialogWindow = mDialog.getWindow();
+                                    if (dialogWindow != null) {
+                                        dialogWindow.setWindowAnimations(com.bigkoo.pickerview.R.style.picker_view_slide_anim);//修改动画样式
+                                        dialogWindow.setGravity(Gravity.CENTER);//改成center,中间显示
+                                    }
+                                }
+
+                                pvTime_end.show();
+
+                            }
+                        })
+                                .setTimeSelectChangeListener(new OnTimeSelectChangeListener() {
+                                    @Override
+                                    public void onTimeSelectChanged(Date date) {
+                                        Log.i("pvTime", "onTimeSelectChanged");
+                                    }
+                                })
+                                .setType(new boolean[]{true, true, true, true, true, true})
+                                .isDialog(true) //默认设置false ，内部实现将DecorView 作为它的父控件。
+                                .setRangDate(calendar,calendar1)
+                                .setTitleText("选择选择起始时间 "+table_name_all[i])
+                                //.isCyclic(true)
+                                .build();
+
+                        Dialog mDialog = pvtime1.getDialog();
+                        if (mDialog != null) {
+
+                            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                                    Gravity.CENTER);
+
+                            params.leftMargin = 0;
+                            params.rightMargin = 0;
+                            pvtime1.getDialogContainerLayout().setLayoutParams(params);
+
+                            Window dialogWindow = mDialog.getWindow();
+                            if (dialogWindow != null) {
+                                dialogWindow.setWindowAnimations(com.bigkoo.pickerview.R.style.picker_view_slide_anim);//修改动画样式
+                                dialogWindow.setGravity(Gravity.CENTER);//改成center,中间显示
+                            }
+                        }
+
+                        pvtime1.show();
+
+                    }
+                });
+                builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        Toast.makeText(DeviceControlActivity.this, "确定", Toast.LENGTH_SHORT)
+                                .show();
+                    }
+                });
+                builder.create().show();
+                //pvTime.show();
                 //...To-do
+
             }
         })
                     .setNegativeButton("获取单次数据",
@@ -383,7 +487,126 @@ public class DeviceControlActivity extends AppCompatActivity {
             public void onClick(DialogInterface
                 dialog, int which)
             {
-                pvTime.show();
+//                mContactinfoDao.get_first_lasttime(); 验证每个表名和是否实际开始、结束时间一致;
+                    mContactinfoDao.verify_tablename();
+                                Log.e("tableisExist",mContactinfoDao.get_tablename());
+                    for (int a = 0; a < table_name_all.length; a++) {
+                        if(table_name_all[a].contains("time_start")) {
+                            table_name_all[a] = table_name_all[a].substring(10).replaceAll("time_end", "至").replace("_",":");
+                        }
+                        //time_start2018_09_19_19_50_40time_end2018_09_19_19_50_45转换为2018:09:19:19:50:40至2018:09:19:19:50:45
+                    }                                                                                       //至为19
+                    AlertDialog.Builder builder=new AlertDialog.Builder(DeviceControlActivity.this);
+                    builder.setTitle("选择时间");
+                    builder.setItems(table_name_all, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            dialogInterface.dismiss();
+                            Toast.makeText(DeviceControlActivity.this, table_name_all[i],
+                                    Toast.LENGTH_SHORT).show();
+
+                            Calendar calendar=Calendar.getInstance();
+                            calendar.set(Integer.parseInt(table_name_all[i].substring(0,4)),
+                                    Integer.parseInt(table_name_all[i].substring(5,7))-1,
+                                    Integer.parseInt(table_name_all[i].substring(8,10)),
+                                    Integer.parseInt(table_name_all[i].substring(11,13)),
+                                    Integer.parseInt(table_name_all[i].substring(14,16)),
+                                    Integer.parseInt(table_name_all[i].substring(17,19)));
+                            Date date=calendar.getTime();
+                            SimpleDateFormat df=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                            String time=df.format(date);//得到点击区间的起始时间
+                            System.out.println("abcdis"+time);
+
+                            Calendar calendar1=Calendar.getInstance();
+                            calendar1.set(Integer.parseInt(table_name_all[i].substring(20,24)),
+                                    Integer.parseInt(table_name_all[i].substring(25,27))-1,
+                                    Integer.parseInt(table_name_all[i].substring(28,30)),
+                                    Integer.parseInt(table_name_all[i].substring(31,33)),
+                                    Integer.parseInt(table_name_all[i].substring(34,36)),
+                                    Integer.parseInt(table_name_all[i].substring(37,39)));
+                            Date date1=calendar1.getTime();
+                            SimpleDateFormat df1=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                            String time1=df1.format(date1);//得到点击区间的终止时间
+
+                            System.out.println("abcdis"+time1);
+                            TimePickerView pvtime1;
+                            pvtime1 = new TimePickerBuilder(DeviceControlActivity.this, new OnTimeSelectListener() {
+                                @Override
+                                public void onTimeSelect(Date date, View v) {
+                                    //点击了单次时间后，将搜索到的数据用list dialog显示出来;
+                                    ProgressDialog progressDialog = ProgressDialog.show(DeviceControlActivity.this,"提示","正在搜索中",false);
+                                    //不能取消的progressdialog
+                                    String_single_data=mContactinfoDao.scan_singletime_data(getTime(date));
+                                    progressDialog.dismiss();
+                                    Toast.makeText(DeviceControlActivity.this,"temper is:"+String_single_data[0]+" pressure is"+String_single_data[1], Toast.LENGTH_SHORT).show();
+                                    AlertDialog.Builder builder_data=new AlertDialog.Builder(DeviceControlActivity.this);
+                                    builder_data.setTitle("选择时间");
+                                    builder_data.setItems(String_single_data, new DialogInterface.OnClickListener()
+                                    {
+                                        @Override
+                                        public void onClick(DialogInterface dialogInterface, int i)
+                                        {
+
+                                        }
+                                    });
+                                    builder_data.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            dialog.dismiss();
+                                            Toast.makeText(DeviceControlActivity.this, "确定", Toast.LENGTH_SHORT)
+                                                    .show();
+                                        }
+                                    });
+                                    builder_data.create().show();
+                                }
+                            })
+                                    .setTimeSelectChangeListener(new OnTimeSelectChangeListener() {
+                                        @Override
+                                        public void onTimeSelectChanged(Date date) {
+                                            Log.i("pvTime", "onTimeSelectChanged");
+
+                                        }
+                                    })
+                                    .setType(new boolean[]{true, true, true, true, true, true})
+                                    .isDialog(true) //默认设置false ，内部实现将DecorView 作为它的父控件。
+                                    .setRangDate(calendar,calendar1)
+                                    .setTitleText(" "+table_name_all[i])
+                                    //.isCyclic(true)
+                                    .build();
+
+                            Dialog mDialog = pvtime1.getDialog();
+                            if (mDialog != null) {
+
+                                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                                        Gravity.CENTER);
+
+                                params.leftMargin = 0;
+                                params.rightMargin = 0;
+                                pvtime1.getDialogContainerLayout().setLayoutParams(params);
+
+                                Window dialogWindow = mDialog.getWindow();
+                                if (dialogWindow != null) {
+                                    dialogWindow.setWindowAnimations(com.bigkoo.pickerview.R.style.picker_view_slide_anim);//修改动画样式
+                                    dialogWindow.setGravity(Gravity.CENTER);//改成center,中间显示
+                                }
+                            }
+
+                            pvtime1.show();
+
+                        }
+                    });
+                    builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            Toast.makeText(DeviceControlActivity.this, "确定", Toast.LENGTH_SHORT)
+                                    .show();
+                        }
+                    });
+                    builder.create().show();
+                //pvTime.show();
                 //...To-do
             }
         });
@@ -394,7 +617,6 @@ public class DeviceControlActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_gatt_services);
         final Intent intent = getIntent();
-        initTimePicker();
         mDevice = intent.getParcelableExtra(EXTRA_DEVICE);
         mContactinfoDao = new ContactinfoDao(this);
         button = (Button) findViewById(R.id.dayin);
@@ -418,39 +640,9 @@ public class DeviceControlActivity extends AppCompatActivity {
                 //截去android_metadata, sqlite_sequence, time_start.这三个默认的数据表;
 //                System.out.println("nametrue"+Arrays.toString(table_name_all));
                 System.out.println("nametrue1"+Arrays.toString(mContactinfoDao.get_table_name_all()));
-               if(table_name_all.length>0)
+                if(table_name_all.length>0)
             {
-                showNormalDialog();
-                //pvTime.show();
-
-
-
-//                Log.e("tableisExist",mContactinfoDao.get_tablename());
-//                    for (int a = 0; a < table_name_all.length; a++) {
-//                        if(table_name_all[a].contains("time_start")) {
-//                            table_name_all[a] = table_name_all[a].substring(10).replaceAll("time_end", "至").replace("_",":");
-//                        }
-//                        //time_start2018_09_19_19_50_40time_end2018_09_19_19_50_45转换为2018:09:19:19:50:40至2018:09:19:19:50:45
-//                    }
-//                    AlertDialog.Builder builder=new AlertDialog.Builder(DeviceControlActivity.this);
-//                    builder.setTitle("选择时间");
-//                    builder.setItems(table_name_all, new DialogInterface.OnClickListener() {
-//                        @Override
-//                        public void onClick(DialogInterface dialogInterface, int i) {
-//                            dialogInterface.dismiss();
-//                            Toast.makeText(DeviceControlActivity.this, table_name_all[i],
-//                                    Toast.LENGTH_SHORT).show();
-//                        }
-//                    });
-//                    builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
-//                        @Override
-//                        public void onClick(DialogInterface dialog, int which) {
-//                            dialog.dismiss();
-//                            Toast.makeText(DeviceControlActivity.this, "确定", Toast.LENGTH_SHORT)
-//                                    .show();
-//                        }
-//                    });
-//                    builder.create().show();
+                showNormalDialog_selet_scankind(table_name_all); //列出已保存的时间，选择查询时间;
             }
                 else
                 {
@@ -462,22 +654,27 @@ public class DeviceControlActivity extends AppCompatActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                while (true) {
-                    while (flag_connect) {
-                        try {
-                            // If there is an active notification on a characteristic, clear
-                            // it first so it doesn't update the data field on the user interface.
-                            if (mNotifyCharacteristic != null) {
-                                mBluetoothLeService.setCharacteristicNotification(mNotifyCharacteristic, false);
-                                mNotifyCharacteristic = null;
+                try {
+                    while (true) {
+                        while (flag_connect) {
+                            try {
+                                // If there is an active notification on a characteristic, clear
+                                // it first so it doesn't update the data field on the user interface.
+                                if (mNotifyCharacteristic != null) {
+                                    mBluetoothLeService.setCharacteristicNotification(mNotifyCharacteristic, false);
+                                    mNotifyCharacteristic = null;
+                                }
+                                mBluetoothLeService.readCharacteristic(characteristic_1); //读取数据
+                                Thread.sleep(500);
+                            } catch (Exception e) {
+                                e.printStackTrace();
                             }
-                            mBluetoothLeService.readCharacteristic(characteristic_1);
-                            Thread.sleep(500);
-                        } catch (Exception e) {
-                            e.printStackTrace();
                         }
                     }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
+
             }
         })     .start();
         ((TextView) findViewById(R.id.device_address)).setText(mDevice.getAddress());
@@ -641,19 +838,19 @@ public class DeviceControlActivity extends AppCompatActivity {
         intent.putExtra(DeviceControlActivity.EXTRA_DEVICE, device);
         return intent;
     }
-    private void Pause_Destory_change_sqltablename() {
-        //将数据库名字设为开始连接时间至Device结束时间;
-        if (flag_connect) {
-            if (sqlTableIsExist("time_start")) {
-                String time_last = mContactinfoDao.get_lasttime();
-                time_last = time_last.replace("-", "_");
-                time_last = time_last.replace(" ", "_");
-                time_last = time_last.replace(":", "_");
-                mContactinfoDao.rename_table_name(mContactinfoDao.get_tablename() + "time_end" + time_last);
-                Log.e("time_last", time_last);
-            }
-        }
-    }
+//    private void Pause_Destory_change_sqltablename() {
+//        //将数据库名字设为开始连接时间至Device结束时间;
+//        if (flag_connect) {
+//            if (sqlTableIsExist("time_start")) {
+//                String time_last = mContactinfoDao.get_lasttime();
+//                time_last = time_last.replace("-", "_");
+//                time_last = time_last.replace(" ", "_");
+//                time_last = time_last.replace(":", "_");
+//                mContactinfoDao.rename_table_name(mContactinfoDao.get_tablename() + "time_end" + time_last);
+//                Log.e("time_last", time_last);
+//            }
+//        }
+//    }
     private enum State {
         DISCONNECTED,
         CONNECTING,
